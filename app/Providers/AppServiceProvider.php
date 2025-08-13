@@ -2,21 +2,22 @@
 
 namespace App\Providers;
 
+use App\Models\Contact;
+use App\Policies\ContactPolicy;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
+    protected $policies = [
+        Contact::class => ContactPolicy::class,
+    ];
+
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
+
     public function boot(): void
     {
         //

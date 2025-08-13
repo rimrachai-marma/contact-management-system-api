@@ -7,9 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactRequest;
 use App\Http\Requests\UpdateContactRequest;
 use App\Models\Contact;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class ContactController extends Controller {
+    // Use AuthorizesRequests trait to handle authorization
+    use AuthorizesRequests;
+
     // route::get -> /contacts
     // List all contacts for the authenticated user
     // Supports search, started filter, and sorting
@@ -17,7 +21,8 @@ class ContactController extends Controller {
     // Started filter: 0 (not started) or 1 (started)
     // Sorting by name (first name) or created_at date
     public function index(Request $request) {
-        $query = Contact::where('user_id', Auth::id());
+        $userId = Auth::id();
+        $query = Contact::where('user_id', $userId);
 
         // Search
          if ($request->filled('search')) {
@@ -36,14 +41,16 @@ class ContactController extends Controller {
         }
 
         // Sorting
-        $sortKey = $request->input('sort', 'name');
-        $order = $request->input('order', 'asc');
- 
-        $sort = ['name' => 'first_name', 'created_at' => 'created_at'][$sortKey] ?? 'first_name';
-        $order = in_array(strtolower($order), ['asc', 'desc']) ? strtolower($order) : 'asc';
+        $allowedSorts = [
+            'name' => 'first_name',
+            'created_at' => 'created_at',
+        ];
+
+        $sort = $allowedSorts[$request->input('sort', 'name')] ?? 'first_name';
+        $order = strtolower($request->input('order', 'asc')) === 'desc' ? 'desc' : 'asc';
 
         $contacts = $query->orderBy($sort, $order)->paginate(12);
-        $totalContacts = Contact::where('user_id', Auth::id())->count();
+        $totalContacts = Contact::where('user_id', $userId)->count();
 
          return response()->json([
             'status' => 'success',
@@ -80,12 +87,7 @@ class ContactController extends Controller {
     // Show a specific contact
     // Only the owner can view their contact
     public function show(Contact $contact) {
-        if ($contact->user_id !== Auth::id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access denied, Forbidden',
-            ],403);
-        }
+        $this->authorize('view', $contact);
 
         return response()->json([
             'status' => 'success',
@@ -100,12 +102,7 @@ class ContactController extends Controller {
     // Update a specific contact
     // Only the owner can update their contact
     public function update(UpdateContactRequest $request, Contact $contact) {
-        if ($contact->user_id !== Auth::id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access denied, Forbidden',
-            ], 403);
-        }
+        $this->authorize('update', $contact);
 
         $contact->update($request->validated());
 
@@ -122,12 +119,7 @@ class ContactController extends Controller {
     // Delete a specific contact
     // Only the owner can delete their contact
     public function destroy(Contact $contact) {
-        if ($contact->user_id !== Auth::id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access denied, Forbidden',
-            ], 403);
-        }
+        $this->authorize('update', $contact);
 
         $contact->delete();
 
@@ -144,12 +136,7 @@ class ContactController extends Controller {
     // Toggle the "started" status of a contact
     // Only the owner can toggle their contact's status
     public function toggleStarted(Contact $contact) {
-        if ($contact->user_id !== Auth::id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Access denied, Forbidden',
-            ], 403);
-        }
+        $this->authorize('update', $contact);
 
         $contact->started = !$contact->started;
         $contact->save();

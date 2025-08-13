@@ -37,9 +37,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
                 // Forbidden (lacking permission)
                 if ($e instanceof AuthorizationException) {
+                    $ability = $e->ability ?? null;
+
+                    // Map abilities to messages
+                    $messages = [
+                        'view'   => 'Access denied, Forbidden',
+                        'update' => 'Action denied, Forbidden',
+                        'delete' => 'Action denied, Forbidden',
+                    ];
+
                     return response()->json([
-                        'status' => 'error',
-                        'message' => 'Forbidden',
+                        'status'  => 'error',
+                        'message' => $messages[$ability] ?? 'Forbidden',
                     ], 403);
                 }
     
